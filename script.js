@@ -6,7 +6,7 @@ const statusTextElement = document.getElementById("status-text");
 
 let selectedPieceId = null;
 let currentRound = 1;
-let pieces = getStagePieces("A");
+let pieces = [];
 let previewCells = [];
 let previewIsValid = false;
 
@@ -138,23 +138,6 @@ function getStageForRound(round) {
   return "E";
 }
 
-function startRound() {
-
-  const stage = getStageForRound(currentRound);
-
-  pieces = getStagePieces(stage).map((shape, index) => ({
-    id: index,
-    shape: cloneShape(shape)
-  }));
-
-  selectedPieceId = null;
-
-  renderPieces();
-  renderBoard();
-
-  roundNumberElement.textContent = currentRound;
-}
-
 let boardSize = 5;
 let boardState = [];
 let targetCells = [];
@@ -185,14 +168,6 @@ function createEmptyBoard(size) {
   return Array.from({ length: size }, () => Array(size).fill(0));
 }
 
-function getStageForRound(round) {
-  if (round <= 3) return "A";
-  if (round <= 7) return "B";
-  if (round <= 13) return "C";
-  if (round <= 20) return "D";
-  return "E";
-}
-
 const STAGE_LEVELS = {
   A: [],
   B: [],
@@ -215,6 +190,43 @@ STAGE_LEVELS.A.push({
   pieces: [
     [[1,1,1]],
     [[1,1,1]]
+  ]
+});
+
+STAGE_LEVELS.A.push({
+  boardSize: 5,
+
+  shape: [
+    [0,0,0,0,0],
+    [0,1,1,1,0],
+    [0,1,0,1,0],
+    [0,1,1,1,0],
+    [0,0,0,0,0]
+  ],
+
+  pieces: [
+    [[1,1,1]],
+    [[1,0],
+     [1,1]]
+    [[1,1]]
+  ]
+});
+
+STAGE_LEVELS.A.push({
+  boardSize: 5,
+
+  shape: [
+    [0,0,0,0,0],
+    [0,1,0,0,0],
+    [0,1,0,0,0],
+    [0,1,1,0,0],
+    [0,0,0,0,0]
+  ],
+
+  pieces: [
+    [[1,1]],
+    [[1],[1]],
+    [[1]]
   ]
 });
 
@@ -305,13 +317,12 @@ function renderPieces() {
   piecesElement.innerHTML = "";
 
   pieces.forEach((piece) => {
-    if (piece.used) {
-      return;
-    }
+    if (piece.used) return;
 
     const pieceElement = document.createElement("button");
     pieceElement.className = "piece";
     pieceElement.type = "button";
+    pieceElement.dataset.pieceId = piece.id;
 
     if (selectedPieceId === piece.id) {
       pieceElement.classList.add("selected");
@@ -320,21 +331,22 @@ function renderPieces() {
     const rows = piece.shape.length;
     const cols = piece.shape[0].length;
 
+    pieceElement.style.display = "grid";
     pieceElement.style.gridTemplateColumns = `repeat(${cols}, 28px)`;
     pieceElement.style.gridTemplateRows = `repeat(${rows}, 28px)`;
 
-    piece.shape.forEach((row) => {
-      row.forEach((value) => {
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
         const pieceCell = document.createElement("div");
         pieceCell.className = "piece-cell";
 
-        if (value === 0) {
+        if (piece.shape[row][col] === 0) {
           pieceCell.classList.add("empty");
         }
 
         pieceElement.appendChild(pieceCell);
-      });
-    });
+      }
+    }
 
     pieceElement.addEventListener("click", () => {
       if (selectedPieceId === piece.id) {
@@ -342,8 +354,7 @@ function renderPieces() {
         statusTextElement.textContent = "Piece rotated.";
       } else {
         selectedPieceId = piece.id;
-        statusTextElement.textContent =
-          "Piece selected. Click the board to place it. Click the piece again to rotate it.";
+        statusTextElement.textContent = "Piece selected. Click the board to place it. Click the piece again to rotate it.";
       }
 
       renderPieces();
@@ -472,11 +483,9 @@ function checkWin() {
 
   statusTextElement.textContent = `Round ${currentRound} cleared!`;
 
-  if (currentRound < rounds.length) {
-    setTimeout(() => {
-      loadRound(currentRound + 1);
-    }, 700);
-  }
+  setTimeout(() => {
+    loadRound(currentRound + 1);
+  }, 700);
 }
 
 function resetGame() {
