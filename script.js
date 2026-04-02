@@ -155,7 +155,7 @@ function startRound() {
   roundNumberElement.textContent = currentRound;
 }
 
-let boardSize = rounds[0].boardSize;
+let boardSize = 5;
 let boardState = [];
 let targetCells = [];
 
