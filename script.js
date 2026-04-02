@@ -130,75 +130,30 @@ function getStagePieces(stage) {
   return pieces;
 }
 
-const rounds = [
-  {
-    boardSize: 5,
-    targetShape: [
-      [0, 0, 0, 0, 0],
-      [0, 1, 1, 1, 0],
-      [0, 1, 1, 1, 0],
-      [0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0]
-    ],
-    pieces: [
-      {
-        id: 1,
-        used: false,
-        shape: [
-          [1, 1, 1]
-        ]
-      },
-      {
-        id: 2,
-        used: false,
-        shape: [
-          [1, 1]
-        ]
-      },
-      {
-        id: 3,
-        used: false,
-        shape: [
-          [1]
-        ]
-      }
-    ]
-  },
-  {
-    boardSize: 5,
-    targetShape: [
-      [0, 0, 0, 0, 0],
-      [0, 1, 1, 1, 0],
-      [0, 1, 0, 1, 0],
-      [0, 1, 1, 1, 0],
-      [0, 0, 0, 0, 0]
-    ],
-    pieces: [
-      {
-        id: 1,
-        used: false,
-        shape: [
-          [1, 1, 1]
-        ]
-      },
-      {
-        id: 2,
-        used: false,
-        shape: [
-          [1, 0],
-          [1, 1]
-        ]
-      },
-      {
-        id: 3,
-        used: false,
-        shape: [
-          [1, 1]
-        ]
-      }
-    ]
-  }
-];
+function getStageForRound(round) {
+  if (round <= 3) return "A";
+  if (round <= 7) return "B";
+  if (round <= 13) return "C";
+  if (round <= 20) return "D";
+  return "E";
+}
+
+function startRound() {
+
+  const stage = getStageForRound(currentRound);
+
+  pieces = getStagePieces(stage).map((shape, index) => ({
+    id: index,
+    shape: cloneShape(shape)
+  }));
+
+  selectedPieceId = null;
+
+  renderPieces();
+  renderBoard();
+
+  roundNumberElement.textContent = currentRound;
+}
 
 let boardSize = rounds[0].boardSize;
 let boardState = [];
@@ -230,21 +185,62 @@ function createEmptyBoard(size) {
   return Array.from({ length: size }, () => Array(size).fill(0));
 }
 
+function getStageForRound(round) {
+  if (round <= 3) return "A";
+  if (round <= 7) return "B";
+  if (round <= 13) return "C";
+  if (round <= 20) return "D";
+  return "E";
+}
+
+const STAGE_LEVELS = {
+  A: [],
+  B: [],
+  C: [],
+  D: [],
+  E: []
+};
+
+STAGE_LEVELS.A.push({
+  boardSize: 5,
+
+  shape: [
+    [0,0,0,0,0],
+    [0,1,1,1,0],
+    [0,1,1,1,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0]
+  ],
+
+  pieces: [
+    [[1,1,1]],
+    [[1,1,1]]
+  ]
+});
+
 function loadRound(roundNumber) {
-  const roundData = rounds[roundNumber - 1];
+  const stage = getStageForRound(roundNumber);
+  const stageLevels = STAGE_LEVELS[stage];
+
+  if (!stageLevels || stageLevels.length === 0) {
+    console.warn("No levels for stage:", stage);
+    return;
+  }
+
+  const roundData = stageLevels[Math.floor(Math.random() * stageLevels.length)];
 
   currentRound = roundNumber;
   boardSize = roundData.boardSize;
   boardState = createEmptyBoard(boardSize);
-  targetCells = roundData.targetShape.map((row) => [...row]);
+  targetCells = roundData.shape.map((row) => [...row]);
   selectedPieceId = null;
   previewCells = [];
   previewIsValid = false;
 
-  pieces = roundData.pieces.map((piece) => ({
-    id: piece.id,
+  pieces = roundData.pieces.map((shape, index) => ({
+    id: index + 1,
     used: false,
-    shape: cloneShape(piece.shape)
+    shape: cloneShape(shape)
   }));
 
   boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 60px)`;
