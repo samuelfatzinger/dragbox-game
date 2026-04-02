@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shape Fitting Puzzle</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <h1>Shape Fitting Puzzle</h1>
+
+<section class="top-bar">
+  <div class="game-info">
+    <p><strong>Round:</strong> <span id="round-number">1</span></p>
+    <p id="status-text">Place all pieces to clear the round.</p>
+  </div>
+
+  <div class="controls">
+    <button id="reset-button" type="button">Reset</button>
+  </div>
+</section>
+
+    <section class="game-area">
+      <div id="board" class="board" aria-label="Puzzle board"></div>
+
+      <div class="side-panel">
+        <h2>Pieces</h2>
+        <div id="pieces" class="pieces"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
