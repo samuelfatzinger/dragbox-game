@@ -4,143 +4,81 @@ const resetButton = document.getElementById("reset-button");
 const roundNumberElement = document.getElementById("round-number");
 const statusTextElement = document.getElementById("status-text");
 
-let selectedPieceId = null;
 let currentRound = 1;
-let pieces = [];
-let previewCells = [];
-let previewIsValid = false;
-
-// ========================
-// PIECE LIBRARIES BY STAGE
-// ========================
-
-const PIECES = {
-
-  A: [
-    [[1]],
-
-    [[1,1]],
-    [[1,1,1]],
-
-    [[1,0],
-     [1,1]],
-
-    [[0,1],
-     [1,1]],
-
-    [[1,1],
-     [1,1]],
-
-    [[1,1,1],
-     [0,1,0]]
-  ],
-
-  B: [
-    // Stage A inherited automatically later
-
-    [[1,1,1,1]],
-
-    [[1,1,0],
-     [0,1,1]],
-
-    [[0,1,1],
-     [1,1,0]],
-
-    [[1,0],
-     [1,0],
-     [1,1]]
-  ],
-
-  C: [
-
-    [[0,1,0],
-     [1,1,1],
-     [0,1,0]],
-
-    [[1,0,0],
-     [1,1,0],
-     [0,1,1]],
-
-    [[1,1,0],
-     [0,1,1],
-     [0,0,1]],
-
-    [[1,0,0],
-     [1,1,1]],
-
-    [[1,1,0],
-     [0,1,0],
-     [0,1,1]]
-  ],
-
-  D: [
-
-    [[1,1,0],
-     [1,1,1]],
-
-    [[1,0,0],
-     [1,1,0],
-     [1,1,1]],
-
-    [[1,1,1],
-     [0,1,0],
-     [0,1,0]],
-
-    [[1,0,0],
-     [1,1,1],
-     [0,0,1]],
-
-    [[1,1,1],
-     [1,0,1]]
-  ],
-
-  E: [
-
-    [[1,1,1,0],
-     [0,1,1,1]],
-
-    [[1,1,0],
-     [1,0,0],
-     [1,1,1]],
-
-    [[1,0,1],
-     [1,1,1],
-     [1,0,1]],
-
-    [[1,1,1],
-     [1,0,0],
-     [1,1,0],
-     [0,1,1]]
-  ]
-
-};
-
-function getStagePieces(stage) {
-
-  const order = ["A","B","C","D","E"];
-
-  const index = order.indexOf(stage);
-
-  let pieces = [];
-
-  for (let i = 0; i <= index; i++) {
-    pieces = pieces.concat(PIECES[order[i]]);
-  }
-
-  return pieces;
-}
-
-function getStageForRound(round) {
-  if (round <= 3) return "A";
-  if (round <= 7) return "B";
-  if (round <= 13) return "C";
-  if (round <= 20) return "D";
-  return "E";
-}
-
 let boardSize = 5;
-let boardState = [];
 let targetCells = [];
+let pieces = [];
+let stageLevelQueues = {};
+
+let pointerDownPieceId = null;
+let pointerDownOrigin = null;
+let pointerStartX = 0;
+let pointerStartY = 0;
+let isDragging = false;
+let draggingPieceId = null;
+let dragReturnPosition = null;
+let dragPointerX = 0;
+let dragPointerY = 0;
+let dragGhostElement = null;
+
+const DRAG_THRESHOLD = 6;
+const TRAY_CELL_SIZE = 28;
+
+const STAGE_LEVELS = {
+  A: [
+    {
+      boardSize: 5,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ],
+      pieces: [
+        [[1, 1, 1]],
+        [[1, 1]],
+        [[1]]
+      ]
+    },
+    {
+      boardSize: 5,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 1, 0, 1, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 0, 0, 0]
+      ],
+      pieces: [
+        [[1, 1, 1]],
+        [[1, 0],
+         [1, 1]],
+        [[1, 1]]
+      ]
+    },
+    {
+      boardSize: 5,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 1, 1, 0],
+        [0, 0, 0, 0, 0]
+      ],
+      pieces: [
+        [[1, 1]],
+        [[0, 1, 0],
+         [1, 1, 1,]],
+        [[1]]
+      ]
+    }
+  ],
+  B: [],
+  C: [],
+  D: [],
+  E: []
+};
 
 function cloneShape(shape) {
   return shape.map((row) => [...row]);
@@ -164,102 +102,162 @@ function rotateShape(shape) {
   return rotated;
 }
 
-function createEmptyBoard(size) {
-  return Array.from({ length: size }, () => Array(size).fill(0));
+function getStageForRound(round) {
+  if (round <= 3) return "A";
+  if (round <= 7) return "B";
+  if (round <= 13) return "C";
+  if (round <= 20) return "D";
+  return "E";
 }
 
-const STAGE_LEVELS = {
-  A: [],
-  B: [],
-  C: [],
-  D: [],
-  E: []
-};
+function shuffleArray(array) {
+  const copy = [...array];
 
-STAGE_LEVELS.A.push({
-  boardSize: 5,
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
 
-  shape: [
-    [0,0,0,0,0],
-    [0,1,1,1,0],
-    [0,1,1,1,0],
-    [0,0,0,0,0],
-    [0,0,0,0,0]
-  ],
+  return copy;
+}
 
-  pieces: [
-    [[1,1,1]],
-    [[1,1,1]]
-  ]
-});
-
-STAGE_LEVELS.A.push({
-  boardSize: 5,
-
-  shape: [
-    [0,0,0,0,0],
-    [0,1,1,1,0],
-    [0,1,0,1,0],
-    [0,1,1,1,0],
-    [0,0,0,0,0]
-  ],
-
-  pieces: [
-    [[1,1,1]],
-    [[1,0],
-     [1,1]]
-    [[1,1]]
-  ]
-});
-
-STAGE_LEVELS.A.push({
-  boardSize: 5,
-
-  shape: [
-    [0,0,0,0,0],
-    [0,1,0,0,0],
-    [0,1,0,0,0],
-    [0,1,1,0,0],
-    [0,0,0,0,0]
-  ],
-
-  pieces: [
-    [[1,1]],
-    [[1],[1]],
-    [[1]]
-  ]
-});
-
-function loadRound(roundNumber) {
-  const stage = getStageForRound(roundNumber);
+function getRandomStageLevel(stage) {
   const stageLevels = STAGE_LEVELS[stage];
 
   if (!stageLevels || stageLevels.length === 0) {
-    console.warn("No levels for stage:", stage);
+    return null;
+  }
+
+  if (!stageLevelQueues[stage] || stageLevelQueues[stage].length === 0) {
+    stageLevelQueues[stage] = shuffleArray(stageLevels);
+  }
+
+  return stageLevelQueues[stage].pop();
+}
+
+function getBoardCellSize() {
+  const rect = boardElement.getBoundingClientRect();
+
+  if (!rect.width || boardSize === 0) {
+    return 56;
+  }
+
+  return rect.width / boardSize;
+}
+
+function getPieceById(pieceId) {
+  return pieces.find((piece) => piece.id === pieceId) || null;
+}
+
+function createOccupancyMap(ignorePieceId = null) {
+  const map = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
+
+  pieces.forEach((piece) => {
+    if (!piece.position || piece.id === ignorePieceId) {
+      return;
+    }
+
+    const cells = getFilledCellsForPiece(piece, piece.position.row, piece.position.col);
+
+    cells.forEach(({ row, col }) => {
+      if (row >= 0 && row < boardSize && col >= 0 && col < boardSize) {
+        map[row][col] = piece.id;
+      }
+    });
+  });
+
+  return map;
+}
+
+function getFilledCellsForPiece(piece, startRow, startCol) {
+  const cells = [];
+
+  for (let row = 0; row < piece.shape.length; row++) {
+    for (let col = 0; col < piece.shape[row].length; col++) {
+      if (piece.shape[row][col] === 1) {
+        cells.push({
+          row: startRow + row,
+          col: startCol + col
+        });
+      }
+    }
+  }
+
+  return cells;
+}
+
+function canPlacePieceAt(piece, startRow, startCol, ignorePieceId = null) {
+  const occupancyMap = createOccupancyMap(ignorePieceId);
+  const cells = getFilledCellsForPiece(piece, startRow, startCol);
+
+  for (const cell of cells) {
+    if (
+      cell.row < 0 ||
+      cell.row >= boardSize ||
+      cell.col < 0 ||
+      cell.col >= boardSize
+    ) {
+      return false;
+    }
+
+    if (targetCells[cell.row][cell.col] !== 1) {
+      return false;
+    }
+
+    if (occupancyMap[cell.row][cell.col] !== null) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isPuzzleSolved() {
+  const occupancyMap = createOccupancyMap();
+
+  for (let row = 0; row < boardSize; row++) {
+    for (let col = 0; col < boardSize; col++) {
+      const targetFilled = targetCells[row][col] === 1;
+      const boardFilled = occupancyMap[row][col] !== null;
+
+      if (targetFilled !== boardFilled) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+function loadRound(roundNumber) {
+  currentRound = roundNumber;
+
+  const stage = getStageForRound(roundNumber);
+  const level = getRandomStageLevel(stage);
+
+  if (!level) {
+    roundNumberElement.textContent = currentRound;
+    statusTextElement.textContent = "No more defined levels.";
+    pieces = [];
+    targetCells = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
+    renderBoard();
+    renderPieces();
     return;
   }
 
-  const roundData = stageLevels[Math.floor(Math.random() * stageLevels.length)];
+  boardSize = level.boardSize;
+  targetCells = level.shape.map((row) => [...row]);
 
-  currentRound = roundNumber;
-  boardSize = roundData.boardSize;
-  boardState = createEmptyBoard(boardSize);
-  targetCells = roundData.shape.map((row) => [...row]);
-  selectedPieceId = null;
-  previewCells = [];
-  previewIsValid = false;
-
-  pieces = roundData.pieces.map((shape, index) => ({
+  pieces = level.pieces.map((shape, index) => ({
     id: index + 1,
-    used: false,
-    shape: cloneShape(shape)
+    shape: cloneShape(shape),
+    position: null
   }));
 
-  boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 60px)`;
-  boardElement.style.gridTemplateRows = `repeat(${boardSize}, 60px)`;
+  clearDragState();
 
   roundNumberElement.textContent = currentRound;
-  statusTextElement.textContent = "Fill the white puzzle shape exactly.";
+  statusTextElement.textContent = `Round ${currentRound}`;
 
   renderBoard();
   renderPieces();
@@ -268,6 +266,8 @@ function loadRound(roundNumber) {
 function renderBoard() {
   boardElement.innerHTML = "";
 
+  const occupancyMap = createOccupancyMap();
+
   for (let row = 0; row < boardSize; row++) {
     for (let col = 0; col < boardSize; col++) {
       const cell = document.createElement("button");
@@ -275,7 +275,7 @@ function renderBoard() {
       cell.type = "button";
 
       const isTargetCell = targetCells[row][col] === 1;
-      const isFilledCell = boardState[row][col] === 1;
+      const occupyingPieceId = occupancyMap[row][col];
 
       if (!isTargetCell) {
         cell.classList.add("blocked");
@@ -284,29 +284,16 @@ function renderBoard() {
         cell.classList.add("target");
       }
 
-      if (isFilledCell) {
+      if (occupyingPieceId !== null) {
         cell.classList.add("filled");
       }
 
-      const isPreviewCell = previewCells.some(
-        (previewCell) => previewCell.row === row && previewCell.col === col
-      );
-
-      if (isPreviewCell && !isFilledCell) {
-        cell.classList.add(previewIsValid ? "preview-valid" : "preview-invalid");
+      if (occupyingPieceId !== null) {
+        cell.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          beginBoardPieceDrag(occupyingPieceId, e);
+        });
       }
-
-      cell.addEventListener("mouseenter", () => {
-        updatePreview(row, col);
-      });
-
-      cell.addEventListener("mouseleave", () => {
-        clearPreview();
-      });
-
-      cell.addEventListener("click", () => {
-        placeSelectedPiece(row, col);
-      });
 
       boardElement.appendChild(cell);
     }
@@ -316,179 +303,259 @@ function renderBoard() {
 function renderPieces() {
   piecesElement.innerHTML = "";
 
-  pieces.forEach((piece) => {
-    if (piece.used) return;
+  pieces
+    .filter((piece) => piece.position === null && piece.id !== draggingPieceId)
+    .forEach((piece) => {
+      const pieceElement = createPieceElement(piece, TRAY_CELL_SIZE);
 
-    const pieceElement = document.createElement("button");
-    pieceElement.className = "piece";
-    pieceElement.type = "button";
-    pieceElement.dataset.pieceId = piece.id;
-
-    if (selectedPieceId === piece.id) {
-      pieceElement.classList.add("selected");
-    }
-
-    const rows = piece.shape.length;
-    const cols = piece.shape[0].length;
-
-    pieceElement.style.display = "grid";
-    pieceElement.style.gridTemplateColumns = `repeat(${cols}, 28px)`;
-    pieceElement.style.gridTemplateRows = `repeat(${rows}, 28px)`;
-
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const pieceCell = document.createElement("div");
-        pieceCell.className = "piece-cell";
-
-        if (piece.shape[row][col] === 0) {
-          pieceCell.classList.add("empty");
-        }
-
-        pieceElement.appendChild(pieceCell);
-      }
-    }
-
-    pieceElement.addEventListener("click", () => {
-      if (selectedPieceId === piece.id) {
-        piece.shape = rotateShape(piece.shape);
-        statusTextElement.textContent = "Piece rotated.";
-      } else {
-        selectedPieceId = piece.id;
-        statusTextElement.textContent = "Piece selected. Click the board to place it. Click the piece again to rotate it.";
-      }
-
-      renderPieces();
-    });
-
-    piecesElement.appendChild(pieceElement);
-  });
-}
-
-function canPlacePiece(piece, startRow, startCol) {
-  for (let row = 0; row < piece.shape.length; row++) {
-    for (let col = 0; col < piece.shape[row].length; col++) {
-      if (piece.shape[row][col] === 0) {
-        continue;
-      }
-
-      const boardRow = startRow + row;
-      const boardCol = startCol + col;
-
-      if (
-        boardRow < 0 ||
-        boardRow >= boardSize ||
-        boardCol < 0 ||
-        boardCol >= boardSize
-      ) {
-        return false;
-      }
-
-      if (targetCells[boardRow][boardCol] !== 1) {
-        return false;
-      }
-
-      if (boardState[boardRow][boardCol] === 1) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-function updatePreview(startRow, startCol) {
-  if (selectedPieceId === null) {
-    return;
-  }
-
-  const piece = pieces.find((p) => p.id === selectedPieceId);
-
-  if (!piece || piece.used) {
-    return;
-  }
-
-  const nextPreviewCells = [];
-
-  for (let row = 0; row < piece.shape.length; row++) {
-    for (let col = 0; col < piece.shape[row].length; col++) {
-      if (piece.shape[row][col] === 0) {
-        continue;
-      }
-
-      nextPreviewCells.push({
-        row: startRow + row,
-        col: startCol + col
+      pieceElement.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        beginTrayPieceInteraction(piece.id, e);
       });
-    }
-  }
 
-  previewCells = nextPreviewCells;
-  previewIsValid = canPlacePiece(piece, startRow, startCol);
-  renderBoard();
+      piecesElement.appendChild(pieceElement);
+    });
 }
 
-function clearPreview() {
-  if (previewCells.length === 0) {
-    return;
-  }
+function createPieceElement(piece, cellSize) {
+  const pieceElement = document.createElement("button");
+  pieceElement.className = "piece";
+  pieceElement.type = "button";
+  pieceElement.style.gridTemplateColumns = `repeat(${piece.shape[0].length}, ${cellSize}px)`;
+  pieceElement.style.gridTemplateRows = `repeat(${piece.shape.length}, ${cellSize}px)`;
+  pieceElement.style.gap = "0px";
 
-  previewCells = [];
-  previewIsValid = false;
-  renderBoard();
-}
+  piece.shape.forEach((row) => {
+    row.forEach((value) => {
+      const pieceCell = document.createElement("div");
+      pieceCell.className = "piece-cell";
+      pieceCell.style.width = cellSize + "px";
+      pieceCell.style.height = cellSize + "px";
 
-function placeSelectedPiece(startRow, startCol) {
-  if (selectedPieceId === null) {
-    return;
-  }
-
-  const piece = pieces.find((p) => p.id === selectedPieceId);
-
-  if (!piece || piece.used) {
-    return;
-  }
-
-  if (!canPlacePiece(piece, startRow, startCol)) {
-    statusTextElement.textContent = "That piece does not fit there.";
-    return;
-  }
-
-  for (let row = 0; row < piece.shape.length; row++) {
-    for (let col = 0; col < piece.shape[row].length; col++) {
-      if (piece.shape[row][col] === 1) {
-        boardState[startRow + row][startCol + col] = 1;
+      if (value === 0) {
+        pieceCell.classList.add("empty");
       }
-    }
+
+      pieceElement.appendChild(pieceCell);
+    });
+  });
+
+  return pieceElement;
+}
+
+function beginTrayPieceInteraction(pieceId, event) {
+  pointerDownPieceId = pieceId;
+  pointerDownOrigin = "tray";
+  pointerStartX = event.clientX;
+  pointerStartY = event.clientY;
+}
+
+function beginBoardPieceDrag(pieceId, event) {
+  const piece = getPieceById(pieceId);
+
+  if (!piece || !piece.position) {
+    return;
   }
 
-  piece.used = true;
-  selectedPieceId = null;
-  previewCells = [];
-  previewIsValid = false;
+  pointerDownPieceId = pieceId;
+  pointerDownOrigin = "board";
+  pointerStartX = event.clientX;
+  pointerStartY = event.clientY;
 
+  startDraggingPiece(pieceId, "board", event.clientX, event.clientY);
+}
+
+function startDraggingPiece(pieceId, origin, clientX, clientY) {
+  const piece = getPieceById(pieceId);
+
+  if (!piece) {
+    return;
+  }
+
+  isDragging = true;
+  draggingPieceId = pieceId;
+  dragPointerX = clientX;
+  dragPointerY = clientY;
+  dragReturnPosition = piece.position ? { ...piece.position } : null;
+
+  if (origin === "board") {
+    piece.position = null;
+    renderBoard();
+    renderPieces();
+  } else {
+    renderPieces();
+  }
+
+  renderDragGhost();
+}
+
+function renderDragGhost() {
+  removeDragGhost();
+
+  const piece = getPieceById(draggingPieceId);
+
+  if (!piece) {
+    return;
+  }
+
+  const cellSize = getBoardCellSize();
+  const ghost = createPieceElement(piece, cellSize);
+
+  ghost.style.position = "fixed";
+  ghost.style.left = dragPointerX - (piece.shape[0].length * cellSize) / 2 + "px";
+  ghost.style.top = dragPointerY - (piece.shape.length * cellSize) / 2 + "px";
+  ghost.style.zIndex = "1000";
+  ghost.style.pointerEvents = "none";
+  ghost.style.opacity = "0.92";
+
+  document.body.appendChild(ghost);
+  dragGhostElement = ghost;
+}
+
+function updateDragGhost() {
+  if (!dragGhostElement) {
+    renderDragGhost();
+    return;
+  }
+
+  const piece = getPieceById(draggingPieceId);
+
+  if (!piece) {
+    return;
+  }
+
+  const cellSize = getBoardCellSize();
+
+  dragGhostElement.style.left = dragPointerX - (piece.shape[0].length * cellSize) / 2 + "px";
+  dragGhostElement.style.top = dragPointerY - (piece.shape.length * cellSize) / 2 + "px";
+}
+
+function removeDragGhost() {
+  if (dragGhostElement) {
+    dragGhostElement.remove();
+    dragGhostElement = null;
+  }
+}
+
+function clearDragState() {
+  pointerDownPieceId = null;
+  pointerDownOrigin = null;
+  pointerStartX = 0;
+  pointerStartY = 0;
+  isDragging = false;
+  draggingPieceId = null;
+  dragReturnPosition = null;
+  removeDragGhost();
+}
+
+function dropDraggingPiece(clientX, clientY) {
+  const piece = getPieceById(draggingPieceId);
+
+  if (!piece) {
+    clearDragState();
+    renderBoard();
+    renderPieces();
+    return;
+  }
+
+  const boardRect = boardElement.getBoundingClientRect();
+  const piecesRect = piecesElement.getBoundingClientRect();
+  const cellSize = getBoardCellSize();
+
+  const relativeX = clientX - boardRect.left;
+  const relativeY = clientY - boardRect.top;
+
+  const startCol = Math.round(relativeX / cellSize - piece.shape[0].length / 2);
+  const startRow = Math.round(relativeY / cellSize - piece.shape.length / 2);
+
+  const insideBoard =
+    clientX >= boardRect.left &&
+    clientX <= boardRect.right &&
+    clientY >= boardRect.top &&
+    clientY <= boardRect.bottom;
+
+  const insideTray =
+    clientX >= piecesRect.left &&
+    clientX <= piecesRect.right &&
+    clientY >= piecesRect.top &&
+    clientY <= piecesRect.bottom;
+
+  if (insideBoard && canPlacePieceAt(piece, startRow, startCol)) {
+    piece.position = { row: startRow, col: startCol };
+  } else if (insideTray) {
+    piece.position = null;
+  } else {
+    piece.position = dragReturnPosition;
+  }
+
+  clearDragState();
   renderBoard();
   renderPieces();
-  checkWin();
+
+  if (isPuzzleSolved()) {
+    statusTextElement.textContent = `Round ${currentRound} cleared!`;
+
+    setTimeout(() => {
+      loadRound(currentRound + 1);
+    }, 500);
+  } else {
+    statusTextElement.textContent = `Round ${currentRound}`;
+  }
 }
 
-function checkWin() {
-  for (let row = 0; row < boardSize; row++) {
-    for (let col = 0; col < boardSize; col++) {
-      if (targetCells[row][col] === 1 && boardState[row][col] !== 1) {
-        statusTextElement.textContent = "Good move. Fill the remaining spaces.";
-        return;
-      }
+function rotateTrayPiece(pieceId) {
+  const piece = getPieceById(pieceId);
+
+  if (!piece || piece.position !== null) {
+    return;
+  }
+
+  piece.shape = rotateShape(piece.shape);
+  renderPieces();
+}
+
+window.addEventListener("pointermove", (event) => {
+  if (pointerDownPieceId === null) {
+    return;
+  }
+
+  if (!isDragging) {
+    const movedX = event.clientX - pointerStartX;
+    const movedY = event.clientY - pointerStartY;
+    const distance = Math.hypot(movedX, movedY);
+
+    if (distance >= DRAG_THRESHOLD) {
+      startDraggingPiece(pointerDownPieceId, pointerDownOrigin, event.clientX, event.clientY);
     }
   }
 
-  statusTextElement.textContent = `Round ${currentRound} cleared!`;
+  if (isDragging) {
+    dragPointerX = event.clientX;
+    dragPointerY = event.clientY;
+    updateDragGhost();
+  }
+});
 
-  setTimeout(() => {
-    loadRound(currentRound + 1);
-  }, 700);
-}
+window.addEventListener("pointerup", (event) => {
+  if (pointerDownPieceId === null) {
+    return;
+  }
+
+  if (isDragging) {
+    dropDraggingPiece(event.clientX, event.clientY);
+    return;
+  }
+
+  if (pointerDownOrigin === "tray") {
+    rotateTrayPiece(pointerDownPieceId);
+    statusTextElement.textContent = "Piece rotated.";
+  }
+
+  clearDragState();
+});
 
 function resetGame() {
+  stageLevelQueues = {};
   loadRound(1);
 }
 
