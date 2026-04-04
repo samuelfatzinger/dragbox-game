@@ -12,6 +12,8 @@ let trayShapes = [];
 let nextPieceId = 1;
 let stageLevelQueues = {};
 
+let currentLevel = null;
+let lastRoundStars = 0;
 let pointerDownPieceId = null;
 let pointerDownOrigin = null;
 let pointerStartX = 0;
@@ -255,6 +257,26 @@ function getFilledCellsForPiece(piece, startRow, startCol) {
   return cells;
 }
 
+function getSnappedPieceCount() {
+  return pieces.filter((piece) => piece.position !== null).length;
+}
+
+function getStarRatingForPieceCount(pieceCount, parPieces, maxPieces) {
+  if (pieceCount <= parPieces) {
+    return 3;
+  }
+
+  if (pieceCount === parPieces + 1) {
+    return 2;
+  }
+
+  if (pieceCount <= maxPieces) {
+    return 1;
+  }
+
+  return 0;
+}
+
 function canPlacePieceAt(piece, startRow, startCol, ignorePieceId = null) {
   const occupancyMap = createOccupancyMap(ignorePieceId);
   const cells = getFilledCellsForPiece(piece, startRow, startCol);
@@ -310,10 +332,15 @@ function loadRound(roundNumber) {
     pieces = [];
     trayShapes = [];
     targetCells = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
+    currentLevel = null;
+    lastRoundStars = 0;
     renderBoard();
     renderPieces();
     return;
   }
+
+  currentLevel = level;
+  lastRoundStars = 0;
 
   boardSize = level.boardSize;
   targetCells = level.shape.map((row) => [...row]);
@@ -597,7 +624,11 @@ function dropDraggingPiece(clientX, clientY) {
     clientY >= piecesRect.top &&
     clientY <= piecesRect.bottom;
 
-  if (insideBoard && canPlacePieceAt(piece, startRow, startCol)) {
+  const cameFromBoard = dragReturnPosition !== null;
+  const maxPieces = currentLevel?.maxPieces ?? Infinity;
+  const canSnapByCount = cameFromBoard || getSnappedPieceCount() < maxPieces;
+
+  if (insideBoard && canPlacePieceAt(piece, startRow, startCol) && canSnapByCount) {
     piece.position = { row: startRow, col: startCol };
     piece.freePosition = null;
   } else if (insideTray) {
@@ -615,7 +646,15 @@ function dropDraggingPiece(clientX, clientY) {
   renderPieces();
 
   if (isPuzzleSolved()) {
-    statusTextElement.textContent = `Round ${currentRound} cleared!`;
+    const snappedCount = getSnappedPieceCount();
+    lastRoundStars = getStarRatingForPieceCount(
+      snappedCount,
+      currentLevel.parPieces,
+      currentLevel.maxPieces
+    );
+
+    statusTextElement.textContent = `Round ${currentRound} cleared! ${lastRoundStars} star${lastRoundStars === 1 ? "" : "s"}`;
+
     setTimeout(() => {
       loadRound(currentRound + 1);
     }, 500);
