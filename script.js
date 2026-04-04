@@ -3,6 +3,8 @@ const piecesElement = document.getElementById("pieces");
 const resetButton = document.getElementById("reset-button");
 const roundNumberElement = document.getElementById("round-number");
 const statusTextElement = document.getElementById("status-text");
+const piecesRemainingElement = document.getElementById("pieces-remaining");
+const retryButton = document.getElementById("retry-button");
 
 let currentRound = 1;
 let boardSize = 5;
@@ -12,6 +14,11 @@ let trayShapes = [];
 let nextPieceId = 1;
 let stageLevelQueues = {};
 
+let runRetries = 2;
+let currentStage = null;
+let levelFailed = false;
+
+let pieceCapLocked = false;
 let currentLevel = null;
 let lastRoundStars = 0;
 let pointerDownPieceId = null;
@@ -261,6 +268,72 @@ function getSnappedPieceCount() {
   return pieces.filter((piece) => piece.position !== null).length;
 }
 
+function getPiecesRemaining() {
+  if (!currentLevel) {
+    return 0;
+  }
+
+  return Math.max(0, currentLevel.maxPieces - getSnappedPieceCount());
+}
+
+function triggerLevelFail() {
+  pieceCapLocked = true;
+  levelFailed = true;
+
+  clearDragState();
+  renderBoard();
+  renderPieces();
+  updatePiecesRemainingText();
+
+  if (runRetries > 0) {
+    statusTextElement.textContent = `Out of pieces. Retries left: ${runRetries}`;
+    retryButton.style.display = "inline-block";
+  } else {
+    statusTextElement.textContent = "Out of pieces. No retries left.";
+    retryButton.style.display = "none";
+  }
+}
+
+function setupLevel(level, stage) {
+  currentLevel = level;
+  currentStage = stage;
+  levelFailed = false;
+  pieceCapLocked = false;
+  lastRoundStars = 0;
+
+  retryButton.style.display = "none";
+
+  boardSize = level.boardSize;
+  targetCells = level.shape.map((row) => [...row]);
+
+  const stageShapes = STAGE_SHAPE_POOLS[stage] || [];
+  trayShapes = stageShapes.map((shape) => cloneShape(shape));
+
+  pieces = [];
+  nextPieceId = 1;
+
+  clearDragState();
+  roundNumberElement.textContent = currentRound;
+  statusTextElement.textContent = `Round ${currentRound}`;
+  renderBoard();
+  renderPieces();
+  updatePiecesRemainingText();
+}
+
+function retryCurrentLevel() {
+  if (!currentLevel || runRetries <= 0) {
+    return;
+  }
+
+  runRetries -= 1;
+  setupLevel(currentLevel, currentStage);
+}
+
+function updatePiecesRemainingText() {
+  const remaining = getPiecesRemaining();
+  piecesRemainingElement.textContent = `${remaining} piece${remaining === 1 ? "" : "s"} remaining`;
+}
+
 function getStarRatingForPieceCount(pieceCount, parPieces, maxPieces) {
   if (pieceCount <= parPieces) {
     return 3;
@@ -327,20 +400,27 @@ function loadRound(roundNumber) {
   const level = getRandomStageLevel(stage);
 
   if (!level) {
+    currentLevel = null;
+    currentStage = null;
+    levelFailed = false;
+    pieceCapLocked = false;
+    lastRoundStars = 0;
     roundNumberElement.textContent = currentRound;
     statusTextElement.textContent = "No more defined levels.";
     pieces = [];
     trayShapes = [];
     targetCells = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
-    currentLevel = null;
-    lastRoundStars = 0;
     renderBoard();
     renderPieces();
+    updatePiecesRemainingText();
     return;
   }
 
+  setupLevel(level, stage);
+
   currentLevel = level;
   lastRoundStars = 0;
+  pieceCapLocked = false;
 
   boardSize = level.boardSize;
   targetCells = level.shape.map((row) => [...row]);
@@ -358,6 +438,7 @@ function loadRound(roundNumber) {
 
   renderBoard();
   renderPieces();
+  updatePiecesRemainingText();
 }
 
 function renderBoard() {
@@ -432,11 +513,15 @@ function renderPieces() {
       pieceElement.style.zIndex = "30";
 
       pieceElement.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        pointerDownPieceId = piece.id;
-        pointerDownOrigin = "free";
-        pointerStartX = e.clientX;
-        pointerStartY = e.clientY;
+        if (levelFailed) {
+          return;
+        }
+
+          e.preventDefault();
+          pointerDownPieceId = piece.id;
+          pointerDownOrigin = "free";
+          pointerStartX = e.clientX;
+          pointerStartY = e.clientY;
       });
 
       document.body.appendChild(pieceElement);
@@ -477,6 +562,14 @@ function createPieceElement(piece, cellSize) {
 }
 
 function beginTrayPieceInteraction(trayIndex, event) {
+  if (levelFailed) {
+    return;
+  }
+
+  if (pieceCapLocked) {
+    return;
+  }
+
   const newPiece = {
     id: nextPieceId++,
     shape: cloneShape(trayShapes[trayIndex]),
@@ -493,6 +586,10 @@ function beginTrayPieceInteraction(trayIndex, event) {
 }
 
 function beginBoardPieceDrag(pieceId, event) {
+  if (levelFailed) {
+    return;
+  }
+
   const piece = getPieceById(pieceId);
 
   if (!piece || !piece.position) {
@@ -644,6 +741,7 @@ function dropDraggingPiece(clientX, clientY) {
   clearDragState();
   renderBoard();
   renderPieces();
+  updatePiecesRemainingText();
 
   if (isPuzzleSolved()) {
     const snappedCount = getSnappedPieceCount();
@@ -658,9 +756,15 @@ function dropDraggingPiece(clientX, clientY) {
     setTimeout(() => {
       loadRound(currentRound + 1);
     }, 500);
-  } else {
-    statusTextElement.textContent = `Round ${currentRound}`;
+    return;
   }
+
+  if (getSnappedPieceCount() >= maxPieces) {
+    triggerLevelFail();
+    return;
+  }
+
+  statusTextElement.textContent = `Round ${currentRound}`;
 }
 
 function rotateFreePiece(pieceId) {
@@ -722,6 +826,18 @@ window.addEventListener("pointerup", (event) => {
   }
 
   clearDragState();
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key.toLowerCase() === "r" && levelFailed && runRetries > 0) {
+    retryCurrentLevel();
+  }
+});
+
+retryButton.addEventListener("click", () => {
+  if (levelFailed && runRetries > 0) {
+    retryCurrentLevel();
+  }
 });
 
 function resetGame() {
