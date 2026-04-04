@@ -8,6 +8,8 @@ let currentRound = 1;
 let boardSize = 5;
 let targetCells = [];
 let pieces = [];
+let trayShapes = [];
+let nextPieceId = 1;
 let stageLevelQueues = {};
 
 let pointerDownPieceId = null;
@@ -24,53 +26,120 @@ let dragGhostElement = null;
 const DRAG_THRESHOLD = 6;
 const TRAY_CELL_SIZE = 28;
 
+const STAGE_SHAPE_POOLS = {
+  A: [
+    [[1]],
+    [[1, 1]],
+    [[1, 1, 1]],
+    [[0, 1, 0],
+     [1, 1, 1]],
+    [[1, 0],
+     [1, 1]],
+    [[1, 1],
+     [1, 1]]
+  ],
+  B: [],
+  C: [],
+  D: [],
+  E: []
+};
+
 const STAGE_LEVELS = {
   A: [
     {
       boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 1, 0],
         [0, 1, 1, 1, 0],
         [0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0]
-      ],
-      pieces: [
-        [[1, 1, 1]],
-        [[1, 1]],
-        [[1]]
       ]
     },
     {
       boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 1, 0],
         [0, 1, 0, 1, 0],
         [0, 1, 1, 1, 0],
         [0, 0, 0, 0, 0]
-      ],
-      pieces: [
-        [[1, 1, 1]],
-        [[1, 0],
-         [1, 1]],
-        [[1, 1]]
       ]
     },
     {
       boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 0, 0],
         [0, 1, 1, 1, 0],
         [0, 0, 1, 1, 0],
         [0, 0, 0, 0, 0]
-      ],
-      pieces: [
-        [[1, 1]],
-        [[0, 1, 0],
-         [1, 1, 1,]],
-        [[1]]
+      ]
+    },
+    {
+      boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    },
+    {
+      boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    },
+    {
+      boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
+      shape: [
+        [0, 1, 0, 0, 0],
+        [0, 1, 1, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 1, 1, 0],
+        [0, 0, 0, 1, 0]
+      ]
+    },
+    {
+      boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
+      shape: [
+        [0, 1, 0, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 0, 1, 0],
+        [0, 1, 1, 1, 0],
+        [0, 1, 0, 0, 0]
+      ]
+    },
+    {
+      boardSize: 5,
+      parPieces: 3,
+      maxPieces: 5,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 1, 1, 1, 0],
+        [0, 0, 1, 1, 0],
+        [0, 1, 0, 1, 0],
+        [0, 0, 0, 0, 0]
       ]
     }
   ],
@@ -239,6 +308,7 @@ function loadRound(roundNumber) {
     roundNumberElement.textContent = currentRound;
     statusTextElement.textContent = "No more defined levels.";
     pieces = [];
+    trayShapes = [];
     targetCells = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
     renderBoard();
     renderPieces();
@@ -248,12 +318,11 @@ function loadRound(roundNumber) {
   boardSize = level.boardSize;
   targetCells = level.shape.map((row) => [...row]);
 
-  pieces = level.pieces.map((shape, index) => ({
-    id: index + 1,
-    shape: cloneShape(shape),
-    position: null,
-    freePosition: null
-  }));
+  const stageShapes = STAGE_SHAPE_POOLS[stage] || [];
+  trayShapes = stageShapes.map((shape) => cloneShape(shape));
+
+  pieces = [];
+  nextPieceId = 1;
 
   clearDragState();
 
@@ -303,30 +372,47 @@ function renderBoard() {
 
 function renderPieces() {
   piecesElement.innerHTML = "";
-  document.querySelectorAll(".free-piece").forEach((el) => el.remove());
+
+  document.querySelectorAll(".floating-piece").forEach((el) => el.remove());
+
+  trayShapes.forEach((shape, index) => {
+    const trayPiece = {
+      id: `tray-${index}`,
+      shape,
+      isTrayShape: true
+    };
+
+    const pieceElement = createPieceElement(trayPiece, TRAY_CELL_SIZE);
+
+    pieceElement.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      beginTrayPieceInteraction(index, e);
+    });
+
+    piecesElement.appendChild(pieceElement);
+  });
+
+  const freeCellSize = getBoardCellSize();
 
   pieces
-    .filter((piece) => piece.position === null && piece.id !== draggingPieceId)
+    .filter((piece) => piece.position === null && piece.freePosition)
     .forEach((piece) => {
-      const cellSize = piece.freePosition ? getBoardCellSize() : TRAY_CELL_SIZE;
-      const pieceElement = createPieceElement(piece, cellSize);
+      const pieceElement = createPieceElement(piece, freeCellSize);
+      pieceElement.classList.add("floating-piece");
+      pieceElement.style.position = "fixed";
+      pieceElement.style.left = `${piece.freePosition.x}px`;
+      pieceElement.style.top = `${piece.freePosition.y}px`;
+      pieceElement.style.zIndex = "30";
 
       pieceElement.addEventListener("pointerdown", (e) => {
         e.preventDefault();
-        beginTrayPieceInteraction(piece.id, e);
+        pointerDownPieceId = piece.id;
+        pointerDownOrigin = "free";
+        pointerStartX = e.clientX;
+        pointerStartY = e.clientY;
       });
 
-      if (piece.freePosition) {
-        pieceElement.classList.add("free-piece");
-        pieceElement.dataset.pieceId = piece.id;
-        pieceElement.style.position = "fixed";
-        pieceElement.style.left = `${piece.freePosition.x}px`;
-        pieceElement.style.top = `${piece.freePosition.y}px`;
-        pieceElement.style.zIndex = "1000";
-        document.body.appendChild(pieceElement);
-      } else {
-        piecesElement.appendChild(pieceElement);
-      }
+      document.body.appendChild(pieceElement);
     });
 }
 
@@ -334,24 +420,26 @@ function createPieceElement(piece, cellSize) {
   const pieceElement = document.createElement("button");
   pieceElement.className = "piece";
   pieceElement.type = "button";
-
-  if (piece.position !== null) {
-    pieceElement.classList.add("snapped");
-  }
-
   pieceElement.style.gridTemplateColumns = `repeat(${piece.shape[0].length}, ${cellSize}px)`;
   pieceElement.style.gridTemplateRows = `repeat(${piece.shape.length}, ${cellSize}px)`;
   pieceElement.style.gap = "0px";
+
+  const fillColor =
+    piece.isTrayShape || piece.position === null
+      ? "#4f7cff"
+      : "#f19b13";
 
   piece.shape.forEach((row) => {
     row.forEach((value) => {
       const pieceCell = document.createElement("div");
       pieceCell.className = "piece-cell";
-      pieceCell.style.width = cellSize + "px";
-      pieceCell.style.height = cellSize + "px";
+      pieceCell.style.width = `${cellSize}px`;
+      pieceCell.style.height = `${cellSize}px`;
 
       if (value === 0) {
         pieceCell.classList.add("empty");
+      } else {
+        pieceCell.style.backgroundColor = fillColor;
       }
 
       pieceElement.appendChild(pieceCell);
@@ -361,8 +449,17 @@ function createPieceElement(piece, cellSize) {
   return pieceElement;
 }
 
-function beginTrayPieceInteraction(pieceId, event) {
-  pointerDownPieceId = pieceId;
+function beginTrayPieceInteraction(trayIndex, event) {
+  const newPiece = {
+    id: nextPieceId++,
+    shape: cloneShape(trayShapes[trayIndex]),
+    position: null,
+    freePosition: null
+  };
+
+  pieces.push(newPiece);
+
+  pointerDownPieceId = newPiece.id;
   pointerDownOrigin = "tray";
   pointerStartX = event.clientX;
   pointerStartY = event.clientY;
@@ -396,11 +493,13 @@ function startDraggingPiece(pieceId, origin, clientX, clientY) {
   dragPointerY = clientY;
   dragReturnPosition = piece.position ? { ...piece.position } : null;
 
-  piece.freePosition = null;
-
   if (origin === "board") {
     piece.position = null;
+    piece.freePosition = null;
     renderBoard();
+    renderPieces();
+  } else if (origin === "free") {
+    piece.freePosition = null;
     renderPieces();
   } else {
     renderPieces();
@@ -502,8 +601,7 @@ function dropDraggingPiece(clientX, clientY) {
     piece.position = { row: startRow, col: startCol };
     piece.freePosition = null;
   } else if (insideTray) {
-    piece.position = null;
-    piece.freePosition = null;
+    pieces = pieces.filter((p) => p.id !== piece.id);
   } else {
     piece.position = null;
     piece.freePosition = {
@@ -524,6 +622,17 @@ function dropDraggingPiece(clientX, clientY) {
   } else {
     statusTextElement.textContent = `Round ${currentRound}`;
   }
+}
+
+function rotateFreePiece(pieceId) {
+  const piece = getPieceById(pieceId);
+
+  if (!piece || piece.position !== null) {
+    return;
+  }
+
+  piece.shape = rotateShape(piece.shape);
+  renderPieces();
 }
 
 function rotateTrayPiece(pieceId) {
@@ -569,9 +678,8 @@ window.addEventListener("pointerup", (event) => {
     return;
   }
 
-  if (pointerDownOrigin === "tray") {
-    rotateTrayPiece(pointerDownPieceId);
-    statusTextElement.textContent = "Piece rotated.";
+  if (pointerDownOrigin === "free") {
+    rotateFreePiece(pointerDownPieceId);
   }
 
   clearDragState();
