@@ -67,12 +67,6 @@ button {
   min-width: 220px;
 }
 
-.pieces {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .piece {
   display: inline-grid;
   gap: 4px;
@@ -130,7 +124,7 @@ button {
 }
 
 .cell.filled {
-  background: #4c8bf5;
+  background: #f19b13;
 }
 
 .cell.preview-valid {
@@ -139,4 +133,18 @@ button {
 
 .cell.preview-invalid {
   background: #ffb3b3;
+}
+
+.pieces {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 2px dashed #777;
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.piece.snapped .piece-cell {
+  background: #f19b13;
 }

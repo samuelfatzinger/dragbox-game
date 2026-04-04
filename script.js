@@ -251,7 +251,8 @@ function loadRound(roundNumber) {
   pieces = level.pieces.map((shape, index) => ({
     id: index + 1,
     shape: cloneShape(shape),
-    position: null
+    position: null,
+    freePosition: null
   }));
 
   clearDragState();
@@ -302,18 +303,30 @@ function renderBoard() {
 
 function renderPieces() {
   piecesElement.innerHTML = "";
+  document.querySelectorAll(".free-piece").forEach((el) => el.remove());
 
   pieces
     .filter((piece) => piece.position === null && piece.id !== draggingPieceId)
     .forEach((piece) => {
-      const pieceElement = createPieceElement(piece, TRAY_CELL_SIZE);
+      const cellSize = piece.freePosition ? getBoardCellSize() : TRAY_CELL_SIZE;
+      const pieceElement = createPieceElement(piece, cellSize);
 
       pieceElement.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         beginTrayPieceInteraction(piece.id, e);
       });
 
-      piecesElement.appendChild(pieceElement);
+      if (piece.freePosition) {
+        pieceElement.classList.add("free-piece");
+        pieceElement.dataset.pieceId = piece.id;
+        pieceElement.style.position = "fixed";
+        pieceElement.style.left = `${piece.freePosition.x}px`;
+        pieceElement.style.top = `${piece.freePosition.y}px`;
+        pieceElement.style.zIndex = "1000";
+        document.body.appendChild(pieceElement);
+      } else {
+        piecesElement.appendChild(pieceElement);
+      }
     });
 }
 
@@ -321,6 +334,11 @@ function createPieceElement(piece, cellSize) {
   const pieceElement = document.createElement("button");
   pieceElement.className = "piece";
   pieceElement.type = "button";
+
+  if (piece.position !== null) {
+    pieceElement.classList.add("snapped");
+  }
+
   pieceElement.style.gridTemplateColumns = `repeat(${piece.shape[0].length}, ${cellSize}px)`;
   pieceElement.style.gridTemplateRows = `repeat(${piece.shape.length}, ${cellSize}px)`;
   pieceElement.style.gap = "0px";
@@ -377,6 +395,8 @@ function startDraggingPiece(pieceId, origin, clientX, clientY) {
   dragPointerX = clientX;
   dragPointerY = clientY;
   dragReturnPosition = piece.position ? { ...piece.position } : null;
+
+  piece.freePosition = null;
 
   if (origin === "board") {
     piece.position = null;
@@ -450,7 +470,6 @@ function clearDragState() {
 
 function dropDraggingPiece(clientX, clientY) {
   const piece = getPieceById(draggingPieceId);
-
   if (!piece) {
     clearDragState();
     renderBoard();
@@ -464,7 +483,6 @@ function dropDraggingPiece(clientX, clientY) {
 
   const relativeX = clientX - boardRect.left;
   const relativeY = clientY - boardRect.top;
-
   const startCol = Math.round(relativeX / cellSize - piece.shape[0].length / 2);
   const startRow = Math.round(relativeY / cellSize - piece.shape.length / 2);
 
@@ -482,10 +500,16 @@ function dropDraggingPiece(clientX, clientY) {
 
   if (insideBoard && canPlacePieceAt(piece, startRow, startCol)) {
     piece.position = { row: startRow, col: startCol };
+    piece.freePosition = null;
   } else if (insideTray) {
     piece.position = null;
+    piece.freePosition = null;
   } else {
-    piece.position = dragReturnPosition;
+    piece.position = null;
+    piece.freePosition = {
+      x: clientX - (piece.shape[0].length * cellSize) / 2,
+      y: clientY - (piece.shape.length * cellSize) / 2
+    };
   }
 
   clearDragState();
@@ -494,7 +518,6 @@ function dropDraggingPiece(clientX, clientY) {
 
   if (isPuzzleSolved()) {
     statusTextElement.textContent = `Round ${currentRound} cleared!`;
-
     setTimeout(() => {
       loadRound(currentRound + 1);
     }, 500);
