@@ -42,7 +42,7 @@ button {
   display: flex;
   gap: 24px;
   align-items: flex-start;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .board {
@@ -137,8 +137,9 @@ button {
 
 .pieces {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 12px;
   border: 2px dashed #777;
   border-radius: 8px;
   padding: 10px;
@@ -147,4 +148,8 @@ button {
 
 .piece.snapped .piece-cell {
   background: #f19b13;
+}
+
+.piece-cell {
+  border: 1px solid rgba(0,0,0,0.25);
 }

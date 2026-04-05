@@ -1,10 +1,32 @@
+/*
+IMPORTANT STRUCTURE NOTES
+
+This file is actively edited across multiple ChatGPT threads.
+
+Rules for edits:
+- Do not rewrite functions
+- Do not rename globals
+- Do not change piece object structure
+- Do not change trayShapes format
+- Do not change drag system without explicit instruction
+- Only make minimal surgical edits
+
+When modifying code:
+Quote exact block first
+Then change only what is necessary
+*/
+
 const boardElement = document.getElementById("board");
 const piecesElement = document.getElementById("pieces");
 const resetButton = document.getElementById("reset-button");
 const roundNumberElement = document.getElementById("round-number");
+const stageLabelElement = document.getElementById("stage-label");
 const statusTextElement = document.getElementById("status-text");
 const piecesRemainingElement = document.getElementById("pieces-remaining");
 const retryButton = document.getElementById("retry-button");
+const stageStarsElement = document.getElementById("stage-stars");
+const totalStarsElement = document.getElementById("total-stars");
+const retriesCountElement = document.getElementById("retries-count");
 
 let currentRound = 1;
 let boardSize = 5;
@@ -17,6 +39,9 @@ let stageLevelQueues = {};
 let runRetries = 2;
 let currentStage = null;
 let levelFailed = false;
+
+let stageStars = 0;
+let totalStars = 0;
 
 let pieceCapLocked = false;
 let currentLevel = null;
@@ -35,22 +60,73 @@ let dragGhostElement = null;
 const DRAG_THRESHOLD = 6;
 const TRAY_CELL_SIZE = 28;
 
+const STAGE_COLORS = {
+  A: "#5C6BC0",
+  B: "#26A69A",
+  C: "#8E24AA",
+  D: "#7CB342",
+  E: "#d20c72",
+  F: "#6D4C41"
+};
+
+const STAGE_RULES = {
+  A: { requiredStars: 5, perfectStars: 9 },
+  B: { requiredStars: 6, perfectStars: 12 },
+  C: { requiredStars: 0, perfectStars: 0 },
+  D: { requiredStars: 0, perfectStars: 0 },
+  E: { requiredStars: 0, perfectStars: 0 },
+  F: { requiredStars: 0, perfectStars: 0 },
+  FINAL: { requiredStars: 0, perfectStars: 0 }
+};
+
+const STAGE_A_SHAPES = [
+  [[1]],
+
+  [[1, 1]],
+
+  [[1, 1, 1]],
+
+  [[0, 1, 0],
+   [1, 1, 1]],
+
+  [[1, 0],
+   [1, 1]],
+
+  [[1, 1],
+   [1, 1]]
+];
+
+const STAGE_B_SHAPES = [
+  [[0, 1, 1],
+   [1, 1, 0]],
+
+  [[1, 1, 1, 1]],
+
+  [[1, 0, 0],
+   [1, 1, 1]],
+
+  [[0, 0, 1],
+   [1, 1, 1]],
+ 
+  [[1, 0, 1]],
+]
+
 const STAGE_SHAPE_POOLS = {
+
   A: [
-    [[1]],
-    [[1, 1]],
-    [[1, 1, 1]],
-    [[0, 1, 0],
-     [1, 1, 1]],
-    [[1, 0],
-     [1, 1]],
-    [[1, 1],
-     [1, 1]]
+    ...STAGE_A_SHAPES.map(shape => ({ shape, stage: "A" })),
   ],
-  B: [],
+
+  B: [
+    ...STAGE_A_SHAPES.map(shape => ({ shape, stage: "A" })),
+    ...STAGE_B_SHAPES.map(shape => ({ shape, stage: "B" }))
+  ], 
+
   C: [],
   D: [],
-  E: []
+  E: [],
+  F: [],
+  FINAL: []
 };
 
 const STAGE_LEVELS = {
@@ -58,7 +134,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 1, 0],
@@ -70,7 +146,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 1, 0],
@@ -82,7 +158,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 0, 0],
@@ -94,7 +170,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 0, 1, 0, 0],
@@ -106,7 +182,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 0, 0],
@@ -118,7 +194,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 1, 0, 0, 0],
         [0, 1, 1, 0, 0],
@@ -130,7 +206,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 1, 0, 0, 0],
         [0, 1, 1, 1, 0],
@@ -142,7 +218,7 @@ const STAGE_LEVELS = {
     {
       boardSize: 5,
       parPieces: 3,
-      maxPieces: 5,
+      maxPieces: 6,
       shape: [
         [0, 0, 0, 0, 0],
         [0, 1, 1, 1, 0],
@@ -152,10 +228,159 @@ const STAGE_LEVELS = {
       ]
     }
   ],
-  B: [],
+
+  B: [
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [1, 0, 1, 0, 0],
+        [1, 1, 1, 1, 1],
+        [1, 0, 1, 0, 1],
+        [1, 1, 1, 0, 1],
+        [0, 0, 1, 1, 1]
+      ]
+    },
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [1, 1, 1, 0, 1],
+        [1, 1, 0, 1, 1],
+        [1, 0, 1, 1, 0],
+        [0, 1, 1, 1, 1],
+        [1, 1, 0, 1, 0]
+      ]
+    },
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [1, 1, 0, 0, 0],
+        [1, 1, 0, 0, 1],
+        [1, 1, 1, 1, 1],
+        [1, 1, 0, 0, 1],
+        [1, 0, 1, 0, 0]
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [1, 0, 1, 0, 1],
+        [0, 0, 1, 0, 0],
+        [1, 0, 1, 0, 1],
+        [0, 0, 1, 0, 0],
+        [1, 0, 1, 0, 1] 
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [1, 1, 1, 0, 0],
+        [0, 1, 1, 0, 0],
+        [1, 1, 1, 0, 1],
+        [1, 1, 1, 1, 1],
+        [0, 1, 0, 1, 0]
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [0, 1, 0, 1, 0],
+        [0, 1, 1, 1, 0],
+        [1, 1, 0, 0, 1],
+        [1, 0, 1, 1, 1],
+        [0, 1, 1, 0, 1]  
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    }, 
+    {
+      boardSize: 5,
+      parPieces: 5,
+      maxPieces: 8,
+      shape: [
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ]
+    }    
+  ],
+
   C: [],
   D: [],
-  E: []
+  E: [],
+  F: [],
+  FINAL: [] 
 };
 
 function cloneShape(shape) {
@@ -180,12 +405,29 @@ function rotateShape(shape) {
   return rotated;
 }
 
+function normalizeLevelPiece(pieceDef, fallbackStage) {
+  if (Array.isArray(pieceDef)) {
+    return {
+      shape: cloneShape(pieceDef),
+      sourceStage: fallbackStage
+    };
+  }
+
+  return {
+    shape: cloneShape(pieceDef.shape),
+    sourceStage: pieceDef.sourceStage || fallbackStage
+  };
+}
+
 function getStageForRound(round) {
   if (round <= 3) return "A";
   if (round <= 7) return "B";
   if (round <= 13) return "C";
   if (round <= 20) return "D";
-  return "E";
+  if (round <= 25) return "E";
+  if (round <= 30) return "F";
+  if (round === 31) return "FINAL";
+  return null;
 }
 
 function shuffleArray(array) {
@@ -307,14 +549,16 @@ function setupLevel(level, stage) {
   targetCells = level.shape.map((row) => [...row]);
 
   const stageShapes = STAGE_SHAPE_POOLS[stage] || [];
-  trayShapes = stageShapes.map((shape) => cloneShape(shape));
+  trayShapes = stageShapes.map((entry) => ({
+    shape: cloneShape(entry.shape),
+    stage: entry.stage
+  }));
 
   pieces = [];
   nextPieceId = 1;
 
   clearDragState();
   roundNumberElement.textContent = currentRound;
-  statusTextElement.textContent = `Round ${currentRound}`;
   renderBoard();
   renderPieces();
   updatePiecesRemainingText();
@@ -329,9 +573,30 @@ function retryCurrentLevel() {
   setupLevel(currentLevel, currentStage);
 }
 
+function updateRetriesText() {
+  retriesCountElement.textContent = retriesRemaining;
+}
+
 function updatePiecesRemainingText() {
   const remaining = getPiecesRemaining();
   piecesRemainingElement.textContent = `${remaining} piece${remaining === 1 ? "" : "s"} remaining`;
+}
+
+function updateStarsUI() {
+  const stage = currentStage || getStageForRound(currentRound);
+
+  const required = STAGE_RULES[stage].requiredStars;
+  const perfect = STAGE_RULES[stage].perfectStars;
+
+  stageStarsElement.textContent = `${stageStars} / ${required} / ${perfect}`;
+  totalStarsElement.textContent = totalStars;
+}
+
+function awardStars(stars) {
+  lastRoundStars = stars;
+  stageStars += stars;
+  totalStars += stars;
+  updateStarsUI();
 }
 
 function getStarRatingForPieceCount(pieceCount, parPieces, maxPieces) {
@@ -397,6 +662,7 @@ function loadRound(roundNumber) {
   currentRound = roundNumber;
 
   const stage = getStageForRound(roundNumber);
+  stageLabelElement.textContent = stage;
   const level = getRandomStageLevel(stage);
 
   if (!level) {
@@ -413,6 +679,7 @@ function loadRound(roundNumber) {
     renderBoard();
     renderPieces();
     updatePiecesRemainingText();
+    updateStarsUI();
     return;
   }
 
@@ -426,7 +693,10 @@ function loadRound(roundNumber) {
   targetCells = level.shape.map((row) => [...row]);
 
   const stageShapes = STAGE_SHAPE_POOLS[stage] || [];
-  trayShapes = stageShapes.map((shape) => cloneShape(shape));
+  trayShapes = stageShapes.map((entry) => ({
+    shape: cloneShape(entry.shape),
+    stage: entry.stage
+  }));
 
   pieces = [];
   nextPieceId = 1;
@@ -434,7 +704,6 @@ function loadRound(roundNumber) {
   clearDragState();
 
   roundNumberElement.textContent = currentRound;
-  statusTextElement.textContent = `Round ${currentRound}`;
 
   renderBoard();
   renderPieces();
@@ -483,10 +752,11 @@ function renderPieces() {
 
   document.querySelectorAll(".floating-piece").forEach((el) => el.remove());
 
-  trayShapes.forEach((shape, index) => {
+  trayShapes.forEach((trayShape, index) => {
     const trayPiece = {
       id: `tray-${index}`,
-      shape,
+      shape: trayShape.shape,
+      sourceStage: trayShape.stage,
       isTrayShape: true
     };
 
@@ -535,10 +805,12 @@ function createPieceElement(piece, cellSize) {
   pieceElement.style.gridTemplateColumns = `repeat(${piece.shape[0].length}, ${cellSize}px)`;
   pieceElement.style.gridTemplateRows = `repeat(${piece.shape.length}, ${cellSize}px)`;
   pieceElement.style.gap = "0px";
+  
+  const stageColor = STAGE_COLORS[piece.sourceStage] || "#4f7cff";
 
   const fillColor =
     piece.isTrayShape || piece.position === null
-      ? "#4f7cff"
+      ? stageColor
       : "#f19b13";
 
   piece.shape.forEach((row) => {
@@ -569,13 +841,16 @@ function beginTrayPieceInteraction(trayIndex, event) {
   if (pieceCapLocked) {
     return;
   }
+  
+const trayShape = trayShapes[trayIndex];
 
-  const newPiece = {
-    id: nextPieceId++,
-    shape: cloneShape(trayShapes[trayIndex]),
-    position: null,
-    freePosition: null
-  };
+const newPiece = {
+  id: nextPieceId++,
+  shape: cloneShape(trayShape.shape),
+  sourceStage: trayShape.stage,
+  position: null,
+  freePosition: null
+};
 
   pieces.push(newPiece);
 
@@ -745,13 +1020,15 @@ function dropDraggingPiece(clientX, clientY) {
 
   if (isPuzzleSolved()) {
     const snappedCount = getSnappedPieceCount();
-    lastRoundStars = getStarRatingForPieceCount(
+    const stars = getStarRatingForPieceCount(
       snappedCount,
       currentLevel.parPieces,
       currentLevel.maxPieces
     );
 
-    statusTextElement.textContent = `Round ${currentRound} cleared! ${lastRoundStars} star${lastRoundStars === 1 ? "" : "s"}`;
+    awardStars(stars);
+
+    statusTextElement.textContent = `Level ${currentRound} cleared! ${lastRoundStars} star${lastRoundStars === 1 ? "" : "s"}`;
 
     setTimeout(() => {
       loadRound(currentRound + 1);
@@ -764,7 +1041,6 @@ function dropDraggingPiece(clientX, clientY) {
     return;
   }
 
-  statusTextElement.textContent = `Round ${currentRound}`;
 }
 
 function rotateFreePiece(pieceId) {
@@ -842,9 +1118,17 @@ retryButton.addEventListener("click", () => {
 
 function resetGame() {
   stageLevelQueues = {};
+  runRetries = 2;
+  updateRetriesText();
   loadRound(1);
 }
 
-resetButton.addEventListener("click", resetGame);
+resetButton.addEventListener("click", () => {
+  if (!currentLevel || !currentStage) {
+    return;
+  }
+
+  setupLevel(currentLevel, currentStage);
+});
 
 loadRound(1);
