@@ -18,15 +18,16 @@ Then change only what is necessary
 
 const boardElement = document.getElementById("board");
 const piecesElement = document.getElementById("pieces");
-const resetButton = document.getElementById("reset-button");
+const clearBoardButton = document.getElementById("clear-board-button");
 const roundNumberElement = document.getElementById("round-number");
 const stageLabelElement = document.getElementById("stage-label");
 const statusTextElement = document.getElementById("status-text");
 const piecesRemainingElement = document.getElementById("pieces-remaining");
-const retryButton = document.getElementById("retry-button");
+const retryAfterFailButton = document.getElementById("retry-button");
 const stageStarsElement = document.getElementById("stage-stars");
 const totalStarsElement = document.getElementById("total-stars");
 const retriesCountElement = document.getElementById("retries-count");
+const playAgainButton = document.getElementById("play-again-button");
 
 let currentRound = 1;
 let boardSize = 5;
@@ -36,7 +37,7 @@ let trayShapes = [];
 let nextPieceId = 1;
 let stageLevelQueues = {};
 
-let runRetries = 2;
+let retriesRemaining = 2;
 let currentStage = null;
 let levelFailed = false;
 
@@ -526,13 +527,17 @@ function triggerLevelFail() {
   renderBoard();
   renderPieces();
   updatePiecesRemainingText();
+  updateRetriesText();
+  clearBoardButton.style.display = "none";
 
-  if (runRetries > 0) {
-    statusTextElement.textContent = `Out of pieces. Retries left: ${runRetries}`;
-    retryButton.style.display = "inline-block";
+  if (retriesRemaining > 0) {
+    statusTextElement.textContent = `Out of pieces. Retries left: ${retriesRemaining}`;
+    retryAfterFailButton.style.display = "inline-block";
+    playAgainButton.style.display = "none";
   } else {
-    statusTextElement.textContent = "Out of pieces. No retries left.";
-    retryButton.style.display = "none";
+    statusTextElement.textContent = "Game Over. No retries left.";
+    retryAfterFailButton.style.display = "none";
+    playAgainButton.style.display = "inline-block";
   }
 }
 
@@ -543,7 +548,9 @@ function setupLevel(level, stage) {
   pieceCapLocked = false;
   lastRoundStars = 0;
 
-  retryButton.style.display = "none";
+  retryAfterFailButton.style.display = "none";
+  clearBoardButton.style.display = "inline-block";
+  playAgainButton.style.display = "none";
 
   boardSize = level.boardSize;
   targetCells = level.shape.map((row) => [...row]);
@@ -562,14 +569,16 @@ function setupLevel(level, stage) {
   renderBoard();
   renderPieces();
   updatePiecesRemainingText();
+  updateRetriesText();
 }
 
-function retryCurrentLevel() {
-  if (!currentLevel || runRetries <= 0) {
+function retryAfterFail() {
+  if (!currentLevel || retriesRemaining <= 0 || !levelFailed) {
     return;
   }
 
-  runRetries -= 1;
+  retriesRemaining -= 1;
+  updateRetriesText();
   setupLevel(currentLevel, currentStage);
 }
 
@@ -680,6 +689,10 @@ function loadRound(roundNumber) {
     renderPieces();
     updatePiecesRemainingText();
     updateStarsUI();
+    updateRetriesText();
+    retryAfterFailButton.style.display = "none";
+    clearBoardButton.style.display = "none";
+    playAgainButton.style.display = "none";
     return;
   }
 
@@ -1105,30 +1118,36 @@ window.addEventListener("pointerup", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
-  if (event.key.toLowerCase() === "r" && levelFailed && runRetries > 0) {
-    retryCurrentLevel();
+  if (event.key.toLowerCase() === "r" && levelFailed && retriesRemaining > 0) {
+    retryAfterFail();
   }
 });
 
-retryButton.addEventListener("click", () => {
-  if (levelFailed && runRetries > 0) {
-    retryCurrentLevel();
+retryAfterFailButton.addEventListener("click", () => {
+  if (levelFailed && retriesRemaining > 0) {
+    retryAfterFail();
   }
 });
 
 function resetGame() {
   stageLevelQueues = {};
-  runRetries = 2;
+  retriesRemaining = 2;
   updateRetriesText();
   loadRound(1);
 }
 
-resetButton.addEventListener("click", () => {
-  if (!currentLevel || !currentStage) {
+function clearBoard() {
+  if (!currentLevel || !currentStage || levelFailed) {
     return;
   }
 
   setupLevel(currentLevel, currentStage);
+}
+
+clearBoardButton.addEventListener("click", clearBoard);
+
+playAgainButton.addEventListener("click", () => {
+  resetGame();
 });
 
 loadRound(1);
