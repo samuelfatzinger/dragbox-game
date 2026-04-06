@@ -73,7 +73,7 @@ const STAGE_COLORS = {
 const STAGE_RULES = {
   A: { requiredStars: 5, perfectStars: 9 },
   B: { requiredStars: 6, perfectStars: 12 },
-  C: { requiredStars: 0, perfectStars: 0 },
+  C: { requiredStars: 12, perfectStars: 18 },
   D: { requiredStars: 0, perfectStars: 0 },
   E: { requiredStars: 0, perfectStars: 0 },
   F: { requiredStars: 0, perfectStars: 0 },
@@ -101,6 +101,9 @@ const STAGE_B_SHAPES = [
   [[0, 1, 1],
    [1, 1, 0]],
 
+  [[1, 1, 0],
+   [0, 1, 1]], 
+
   [[1, 1, 1, 1]],
 
   [[1, 0, 0],
@@ -109,8 +112,61 @@ const STAGE_B_SHAPES = [
   [[0, 0, 1],
    [1, 1, 1]],
  
-  [[1, 0, 1]],
-]
+  [[1, 0, 1]]
+];
+
+const STAGE_C_SHAPES = [
+  [[1, 0, 0],
+   [1, 0, 0],
+   [1, 1, 1]],
+
+  [[1, 0, 1],
+   [0, 1, 0],
+   [1, 0, 1]],
+
+  [[1, 0, 1, 0, 1]],
+
+  [[1, 1, 0, 1]],
+
+  [[0, 1, 0],
+   [1, 0, 1]],
+
+  [[1, 1, 1],
+   [1, 0, 1]]
+];
+
+const STAGE_D_SHAPES = [
+  [[1, 1, 1],
+   [1, 1, 1],
+   [1, 1, 1]],
+
+  [[0, 1, 0, 0],
+   [1, 1, 1, 1],
+   [0, 0, 1, 0]],
+
+  [[0, 0, 1, 0],
+   [1, 1, 1, 1],
+   [0, 1, 0, 0]],
+
+  [[0, 1, 0],
+   [1, 1, 1],
+   [0, 1, 0]],
+
+  [[1, 0],
+   [0, 1]],
+
+  [[1, 0, 0],
+   [0, 1, 0],
+   [0, 0, 1]],
+
+  [[1, 0, 0, 0],
+   [1, 1, 1, 1],
+   [0, 0, 0, 1]],
+
+  [[1, 0, 1],
+   [1, 0, 1],
+   [1, 1, 1]] 
+];
 
 const STAGE_SHAPE_POOLS = {
 
@@ -123,8 +179,17 @@ const STAGE_SHAPE_POOLS = {
     ...STAGE_B_SHAPES.map(shape => ({ shape, stage: "B" }))
   ], 
 
-  C: [],
-  D: [],
+  C: [
+    ...STAGE_A_SHAPES.map(shape => ({ shape, stage: "A" })),
+    ...STAGE_B_SHAPES.map(shape => ({ shape, stage: "B" })),
+    ...STAGE_B_SHAPES.map(shape => ({ shape, stage: "C" }))
+  ],
+  D: [
+    ...STAGE_A_SHAPES.map(shape => ({ shape, stage: "A" })),
+    ...STAGE_B_SHAPES.map(shape => ({ shape, stage: "B" })),
+    ...STAGE_B_SHAPES.map(shape => ({ shape, stage: "C" })),
+    ...STAGE_B_SHAPES.map(shape => ({ shape, stage: "D" }))
+  ],
   E: [],
   F: [],
   FINAL: []
@@ -300,7 +365,7 @@ const STAGE_LEVELS = {
         [0, 1, 1, 1, 0],
         [1, 1, 0, 0, 1],
         [1, 0, 1, 1, 1],
-        [0, 1, 1, 0, 1]  
+        [0, 1, 1, 0, 1]
       ]
     }, 
     {
@@ -308,11 +373,11 @@ const STAGE_LEVELS = {
       parPieces: 5,
       maxPieces: 8,
       shape: [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]
+        [0, 1, 1, 1, 1],
+        [1, 1, 1, 1, 0],
+        [0, 1, 0, 1, 1],
+        [1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1]
       ]
     }, 
     {
@@ -320,11 +385,11 @@ const STAGE_LEVELS = {
       parPieces: 5,
       maxPieces: 8,
       shape: [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]
+        [0, 1, 1, 1, 0],
+        [1, 0, 1, 0, 1],
+        [1, 1, 1, 0, 1],
+        [1, 0, 1, 1, 0],
+        [0, 1, 0, 0, 0]
       ]
     }, 
     {
@@ -332,11 +397,11 @@ const STAGE_LEVELS = {
       parPieces: 5,
       maxPieces: 8,
       shape: [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]
+        [1, 1, 0, 0, 0],
+        [1, 1, 1, 0, 0],
+        [0, 1, 0, 1, 0],
+        [1, 0, 1, 0, 1],
+        [1, 1, 1, 1, 1]
       ]
     }, 
     {
@@ -344,11 +409,11 @@ const STAGE_LEVELS = {
       parPieces: 5,
       maxPieces: 8,
       shape: [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]
+        [1, 1, 1, 1, 1],
+        [1, 0, 1, 0, 1],
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1]
       ]
     }, 
     {
@@ -356,11 +421,11 @@ const STAGE_LEVELS = {
       parPieces: 5,
       maxPieces: 8,
       shape: [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]
+        [1, 1, 0, 0, 0],
+        [1, 1, 1, 1, 1],
+        [1, 1, 1, 0, 1],
+        [0, 1, 1, 0, 1],
+        [1, 1, 0, 1, 1]
       ]
     }, 
     {
@@ -368,16 +433,269 @@ const STAGE_LEVELS = {
       parPieces: 5,
       maxPieces: 8,
       shape: [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]
+        [1, 0, 0, 0, 1],
+        [0, 1, 0, 1, 1],
+        [1, 1, 0, 1, 0],
+        [0, 1, 1, 1, 1],
+        [1, 0, 1, 0, 0]
       ]
     }    
   ],
 
-  C: [],
+  C: [
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1],
+        [0, 1, 1, 1, 1, 1, 0],
+        [1, 1, 1, 1, 1, 1, 1],
+        [0, 1, 0, 1, 0, 1, 0],
+        [0, 1, 0, 1, 0, 1, 0],
+        [0, 1, 0, 1, 0, 1, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 0, 1, 0, 1, 1, 1],
+        [1, 1, 1, 0, 0, 1, 0],
+        [1, 0, 1, 0, 1, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 1, 0, 0, 1, 0],
+        [0, 1, 0, 0, 1, 1, 1],
+        [0, 1, 0, 0, 1, 0, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 0, 1, 1, 1, 0, 0],
+        [0, 0, 0, 1, 1, 1, 0],
+        [1, 0, 1, 1, 0, 1, 0],
+        [1, 0, 1, 1, 0, 1, 0],
+        [1, 0, 1, 0, 1, 0, 1],
+        [1, 1, 0, 1, 0, 0, 1],
+        [0, 1, 1, 0, 1, 1, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 1, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [0, 0, 1, 1, 1, 0, 0],
+        [0, 0, 0, 1, 1, 1, 0],
+        [1, 1, 1, 0, 1, 1, 1],
+        [1, 1, 0, 0, 0, 1, 1],
+        [1, 1, 1, 0, 1, 1, 1],
+        [0, 1, 1, 1, 0, 0, 0],
+        [0, 0, 1, 1, 1, 0, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [0, 0, 1, 1, 1, 0, 0],
+        [0, 1, 0, 1, 1, 0, 1],
+        [1, 1, 0, 1, 1, 1, 0],
+        [1, 1, 0, 1, 0, 0, 1],
+        [0, 0, 0, 0, 1, 1, 1],
+        [0, 1, 1, 1, 1, 1, 1],
+        [0, 0, 1, 0, 0, 0, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 1, 1, 1, 0, 1, 1],
+        [1, 0, 1, 0, 0, 1, 0],
+        [0, 1, 0, 1, 0, 1, 1],
+        [1, 0, 1, 0, 0, 0, 0],
+        [0, 0, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 0, 1, 1],
+        [0, 0, 1, 0, 1, 1, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [0, 1, 1, 0, 1, 0, 1],
+        [1, 1, 0, 1, 0, 0, 0],
+        [1, 1, 1, 1, 1, 0, 1],
+        [1, 1, 0, 1, 0, 1, 0],
+        [0, 1, 1, 1, 1, 0, 0],
+        [0, 1, 0, 1, 0, 1, 0],
+        [0, 1, 0, 1, 1, 1, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 1, 1, 1, 0, 0, 1],
+        [1, 0, 1, 1, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [1, 1, 1, 1, 0, 0, 0],
+        [1, 1, 0, 1, 1, 1, 1],
+        [0, 0, 0, 0, 1, 1, 1],
+        [0, 0, 0, 0, 1, 1, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 0, 1, 0, 1, 0, 1],
+        [0, 0, 0, 1, 0, 0, 0],
+        [1, 0, 1, 0, 1, 0, 1],
+        [0, 1, 0, 1, 0, 1, 0],
+        [1, 0, 1, 0, 1, 0, 1],
+        [0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 1, 0, 1, 0, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 0, 0, 1, 0, 0],
+        [1, 1, 1, 0, 1, 1, 1],
+        [0, 0, 1, 1, 1, 1, 1],
+        [1, 0, 1, 1, 0, 1, 1],
+        [0, 1, 1, 1, 1, 1, 0],
+        [1, 0, 1, 0, 1, 0, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 1, 1, 1, 0, 1, 0],
+        [0, 1, 0, 1, 0, 1, 1],
+        [1, 0, 0, 0, 0, 1, 1],
+        [1, 0, 1, 1, 0, 0, 1],
+        [1, 1, 1, 0, 0, 1, 1],
+        [1, 1, 1, 0, 1, 1, 1],
+        [0, 1, 0, 1, 1, 0, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 0, 0, 1, 0, 1, 0],
+        [1, 1, 1, 1, 0, 1, 0],
+        [0, 1, 1, 1, 0, 1, 1],
+        [1, 1, 0, 1, 0, 1, 0],
+        [1, 0, 1, 1, 1, 1, 0],
+        [1, 1, 1, 1, 0, 1, 0],
+        [1, 0, 0, 0, 0, 1, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [0, 0, 0, 0, 1, 1, 1],
+        [0, 0, 0, 0, 0, 1, 1],
+        [0, 0, 1, 1, 1, 0, 1],
+        [0, 0, 0, 1, 1, 0, 0],
+        [1, 1, 1, 0, 1, 0, 0],
+        [0, 1, 1, 0, 0, 0, 0],
+        [1, 0, 1, 0, 0, 0, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [0, 1, 1, 1, 1, 1, 0],
+        [1, 1, 0, 0, 0, 1, 1],
+        [1, 1, 1, 0, 1, 0, 1],
+        [1, 0, 0, 1, 0, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1],
+        [1, 1, 0, 0, 0, 1, 1],
+        [0, 1, 1, 1, 1, 1, 0]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 1, 1, 0, 1, 1, 0],
+        [1, 0, 0, 1, 1, 0, 1],
+        [1, 1, 1, 1, 0, 1, 1],
+        [0, 1, 1, 1, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 1],
+        [1, 1, 1, 1, 1, 0, 1],
+        [1, 1, 1, 0, 1, 1, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [1, 1, 1, 0, 1, 1, 1],
+        [1, 1, 1, 0, 1, 0, 1],
+        [1, 1, 1, 0, 1, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0],
+        [1, 1, 1, 0, 1, 1, 1],
+        [1, 0, 1, 0, 1, 1, 1],
+        [1, 1, 1, 0, 1, 1, 1]
+      ]
+    },
+    {
+      boardSize: 7,
+      parPieces: 8,
+      maxPieces: 12,
+      shape: [
+        [0, 1, 1, 1, 0, 0, 0],
+        [0, 1, 0, 1, 1, 0, 1],
+        [0, 1, 0, 1, 1, 1, 1],
+        [0, 0, 1, 1, 1, 0, 0],
+        [1, 1, 1, 1, 0, 1, 1],
+        [1, 0, 1, 1, 1, 1, 0],
+        [1, 1, 1, 0, 0, 1, 1]
+      ]
+    }
+  ],
   D: [],
   E: [],
   F: [],
@@ -519,7 +837,7 @@ function getPiecesRemaining() {
   return Math.max(0, currentLevel.maxPieces - getSnappedPieceCount());
 }
 
-function triggerLevelFail() {
+function triggerLevelFail(customMessage = null) {
   pieceCapLocked = true;
   levelFailed = true;
 
@@ -531,11 +849,11 @@ function triggerLevelFail() {
   clearBoardButton.style.display = "none";
 
   if (retriesRemaining > 0) {
-    statusTextElement.textContent = `Out of pieces. Retries left: ${retriesRemaining}`;
+    statusTextElement.textContent = customMessage ?? `Out of pieces. Retries left: ${retriesRemaining}`;
     retryAfterFailButton.style.display = "inline-block";
     playAgainButton.style.display = "none";
   } else {
-    statusTextElement.textContent = "Game Over. No retries left.";
+    statusTextElement.textContent = customMessage ?? "Game Over. No retries left.";
     retryAfterFailButton.style.display = "none";
     playAgainButton.style.display = "inline-block";
   }
@@ -578,7 +896,11 @@ function retryAfterFail() {
   }
 
   retriesRemaining -= 1;
+  stageStars -= lastRoundStars;
+  totalStars -= lastRoundStars;
+  lastRoundStars = 0;
   updateRetriesText();
+  updateStarsUI();
   setupLevel(currentLevel, currentStage);
 }
 
@@ -588,7 +910,20 @@ function updateRetriesText() {
 
 function updatePiecesRemainingText() {
   const remaining = getPiecesRemaining();
-  piecesRemainingElement.textContent = `${remaining} piece${remaining === 1 ? "" : "s"} remaining`;
+
+  let starPreview = "";
+  if (currentLevel && !levelFailed) {
+    const nextPlacementCount = getSnappedPieceCount() + 1;
+    const projectedStars = getStarRatingForPieceCount(
+      nextPlacementCount,
+      currentLevel.parPieces,
+      currentLevel.maxPieces
+    );
+    starPreview = ` • next placement: ${projectedStars} star${projectedStars === 1 ? "" : "s"}`;
+  }
+
+  piecesRemainingElement.textContent =
+    `${remaining} piece${remaining === 1 ? "" : "s"} remaining${starPreview}`;
 }
 
 function updateStarsUI() {
@@ -613,11 +948,11 @@ function getStarRatingForPieceCount(pieceCount, parPieces, maxPieces) {
     return 3;
   }
 
-  if (pieceCount === parPieces + 1) {
+  if (pieceCount <= maxPieces - 2) {
     return 2;
   }
 
-  if (pieceCount <= maxPieces) {
+  if (pieceCount === maxPieces - 1) {
     return 1;
   }
 
@@ -671,6 +1006,10 @@ function loadRound(roundNumber) {
   currentRound = roundNumber;
 
   const stage = getStageForRound(roundNumber);
+  if (currentStage && stage !== currentStage) {
+    stageStars = 0;
+    updateStarsUI();
+  }
   stageLabelElement.textContent = stage;
   const level = getRandomStageLevel(stage);
 
@@ -1041,19 +1380,25 @@ function dropDraggingPiece(clientX, clientY) {
 
     awardStars(stars);
 
+    const nextRound = currentRound + 1;
+    const nextStage = getStageForRound(nextRound);
+    const requiredStars = STAGE_RULES[currentStage]?.requiredStars ?? 0;
+
     statusTextElement.textContent = `Level ${currentRound} cleared! ${lastRoundStars} star${lastRoundStars === 1 ? "" : "s"}`;
 
-    setTimeout(() => {
-      loadRound(currentRound + 1);
-    }, 500);
+    if (nextStage !== currentStage && stageStars < requiredStars) {
+      triggerLevelFail(`Stage ${currentStage} failed. ${requiredStars} stars required.`);
+    } else {
+      setTimeout(() => {
+        loadRound(nextRound);
+      }, 500);
+    }
     return;
-  }
-
+  }  
   if (getSnappedPieceCount() >= maxPieces) {
     triggerLevelFail();
     return;
   }
-
 }
 
 function rotateFreePiece(pieceId) {
